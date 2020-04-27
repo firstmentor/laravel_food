@@ -1,0 +1,191 @@
+<?php
+
+namespace App\Http\Controllers; 
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller; 
+use Illuminate\Support\Facades\Redirect; 
+use App\restaurants;
+use App\titles; 
+use App\Payouts; 
+use App\Profiles; 
+use App\Delivery; 
+
+use Validator; 
+use Session;
+use\DB;
+use Auth;
+use App\User;
+
+class DeliveryController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        return view('deliveryboy.addprofile');
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        
+          
+        $file = $request->file('image');
+        $filename = 'image'.time().'.'.$request->image->extension();
+        $destination = storage_path('../public/upload');
+        $file->move($destination,$filename); 
+
+
+        $obj = new Delivery; 
+        $obj->name=$request->name;
+        $obj->address=$request->address;
+        $obj->image=$filename;//where image is a database name
+        $obj->city=$request->city;
+        $obj->mobileno=$request->mobileno;
+        $obj->alternate_mobile=$request->alternate_mobile; 
+        $obj->latitude=$request->latitude;  
+        $obj->longitude=$request->longitude;   
+        $obj->email=$request->email;  
+        $obj->password=$request->password;  
+        $is_saved=$obj->save(); 
+        if ($is_saved) 
+        {    
+          session()->flash("Message","Your Profiles is Completed successfully! ");
+          return redirect("dashboard"); 
+        }
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show()
+    {
+         //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        // 
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    { 
+     //
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+     public function destroy($id)
+    { 
+        //
+    } 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<?php
+
+namespace App\Http\Controllers; 
+use Illuminate\Http\Request;  
+use App\Http\Controllers\Controller; 
+use Illuminate\Support\Facades\Redirect; 
+use App\restaurants; 
+use App\order; 
+use App\order_item;
+use Validator; 
+use Session;
+use\DB; 
+use Auth;
+use\App\User;
+
+class HomePageApiController extends Controller
+{    
+    public function homepage(Request $req) 
+    {  
+        if(restaurants::where('city', $req->city)->count() > 0) 
+        {
+            return response()->json($data = [
+                'status' => 201,
+                'msg' => 'Already Registered'
+            ]);
+        }
+        
+            $googleMapUrl = "https://maps.googleapis.com/maps/api/geocode/json?latlng=26.4947,77.9940&result_type=locality&key=AIzaSyCjf4v2Iaap5p7mNaROJ4RvU_knhiIG9do";
+            $geocodeResponseData = file_get_contents($googleMapUrl);
+            $responseData = json_decode($geocodeResponseData, true);
+            if($responseData['status']=='OK') 
+            { 
+                foreach ($responseData['results'][0]['address_components'] as $r) { 
+                    if ($r['types'][0]== 'locality') {
+                        $city = $r['long_name'];
+                        break;
+                    }
+                } 
+                echo $city; 
+            } else {
+                echo "ERROR: {$responseData['status']}";
+                return false;
+            } 
+
+    }
+   
+}
+

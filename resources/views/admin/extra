@@ -1,0 +1,745 @@
+<?php
+
+namespace App\Http\Controllers; 
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller; 
+use Illuminate\Support\Facades\Redirect; 
+use App\restaurants;
+use App\titles; 
+use App\Payouts; 
+use App\Profiles; 
+use Validator; 
+use Session;
+use\DB;
+use Auth;
+use App\User;
+
+class AdminController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        return view('admin.addrestaurantprofile');
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        $data=Validator::make($request->all(),
+        [  
+           "name"=>"required|max:255",
+           "address"=>"required|max:255",
+            "email"=>"required|max:255|email",
+            "mobileno"=>"required|max:25",
+           "servetype"=>"required|max:20", 
+           "offer"=>"required|max:255",
+           "delivery_time"=>"required|max:255", 
+           "working_days"=>"required|max:20",
+           "cost_for_two"=>"required|max:25",
+           "bank_name"=>"required|max:25",
+           "bank_account_holder"=>"required|max:25",
+           "bank_account_no"=>"required|max:25",
+           "ifsc_code"=>"required|max:25", 
+        ],
+
+        [   "name.required"=>"restaurant name is needed",
+            "address.required"=>"restaurant address is needed",
+            "email.required"=>"Email is needed",
+            "email.email"=>"email should be valid email",
+            "mobileno.required"=>"contact no is needed",
+            "servetype.required"=>"serve type is needed", 
+            "offer.required"=>"Offer in percent is needed",
+            "delivery_time.required"=>" Delivery time is needed", 
+            "working_days.required"=>"Working Days is required",
+            "cost_for_two.required"=>"Cost for two person is needed",
+            "bank_name.required"=>"Bank Name is needed",
+            "bank_account_holder"=>"Bank Account Holder name is needed",
+            "bank_account_no"=>"Bank Account no. is needed", 
+            "ifsc_code.required"=>" ifsccode is needed", 
+        ])->Validate(); 
+          
+        $file = $request->file('image');
+        $filename = 'image'.time().'.'.$request->image->extension();
+        $destination = storage_path('../public/upload');
+        $file->move($destination,$filename); 
+
+        //Commit data to user table
+        $rest = new User;
+        $rest->name = $request->name;
+        $rest->email = $request->email;
+        $rest->password = bcrypt($request->mobileno);
+        $rest->is_active= 1;
+        $rest->usertype= 1; 
+        $rest->save(); 
+        //Commit to restaurant table
+        $obj = new restaurants; 
+        $obj->userid = $rest->id;
+        $obj->name=$request->name;
+        $obj->address=$request->address;
+        $obj->city=$request->city;
+
+        $obj->email=$request->email;
+        $obj->mobileno=$request->mobileno; 
+        $obj->servetype= implode( ',', $request->servetype);  
+        //
+        $obj->image=$filename;//where image is a database name
+        //
+        $obj->offer=$request->offer;  
+        $obj->delivery_time=$request->delivery_time;  
+        $obj->open_time=$request->open_hr.':'.$request->open_min.' '.$request->open_meridian;  
+        $obj->close_time=$request->close_hr.':'.$request->close_min.' '.$request->close_meridian;  
+        $obj->working_days=implode( ',', $request->working_days);  
+        $obj->cost_for_two=$request->cost_for_two;  
+        $obj->bank_name=$request->bank_name;  
+        $obj->bank_account_holder=$request->bank_account_holder;
+        $obj->bank_account_no=$request->bank_account_no;  
+        $obj->ifsc_code=$request->ifsc_code;  
+        $is_saved=$obj->save(); 
+        if ($is_saved) 
+        {
+          session()->flash("Message","Restaurant  is Added  successfully! ");
+          return redirect("admin"); 
+        }
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show()
+    {
+        $forms=restaurants::select('*')->get();
+        return view('admin.allrestaurantlist',compact("forms"));
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {   
+      
+        $data['forms']= restaurants::find($id);
+        return view('admin.editrestaurant'); 
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    { 
+        //Commit data to user table
+        $rest = User::find($id);
+        $rest->name = $request->name;
+        $rest->email = $request->email;
+        $rest->password = bcrypt($request->mobileno);
+        $rest->save(); 
+        //Commit to restaurant table
+        $obj = restaurants::find($id);
+        $obj->userid = $rest->id;
+        $obj->name=$request->name;
+        $obj->address=$request->address;
+        $obj->email=$request->email;
+        $obj->mobileno=$request->mobileno; 
+        $obj->bank_name=$request->bank_name;  
+        $obj->bank_account_holder=$request->bank_account_holder;
+        $obj->bank_account_no=$request->bank_account_no;  
+        $obj->ifsc_code=$request->ifsc_code; 
+        $is_saved=$obj->save(); 
+        if ($is_saved) 
+        {
+          session()->flash("Message","Restaurant  is Added  successfully! ");
+          return redirect("allrestaurant"); 
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+     public function destroy($id)
+    {
+        $menu1 =restaurants::find($id);
+        $is_deleted =$menu1->delete();
+        if($is_deleted)
+        { 
+          return redirect("allrestaurant");
+        }
+
+    } 
+
+    public function restaurantdelete($id)
+    { 
+       $delete = restaurants::where('id',$id)->delete();    
+       return Redirect::to('/allrestaurant');    
+    } 
+   
+    public function allrestaurant()              // This is a all restaurant show method
+    {
+        $forms=restaurants::select('*')->get();
+        return view('admin.allrestaurantlist',compact("forms"));
+    }                                          // This is a all restaurant show method end 
+
+    // CK EDITOR  METHOD  STARTS//
+    public function privacy()
+    {
+        $data = titles::where('id',1)->first();
+        return view('admin.showdata',compact("data"));
+    }
+
+    public function term()
+    {
+        $data = titles::where('id',2)->first();
+        return view('admin.showdata',compact("data"));
+    }
+
+    public function contact()
+    {
+        $data = titles::where('id',3)->first();
+        return view('admin.showdata',compact("data"));
+    }
+
+    public function editor()
+    {
+        $data['result']=titles::Orderby('id','desc')->get();
+        return view('admin.editor',$data);
+    }
+
+    public function details_update(Request $req)
+    {
+        titles::where('id',$req->id)->update([
+
+         'content'=>$req->content 
+        ]);
+
+        return back()->with("Message","Data Updated successfully! ");
+    } 
+    // CK EDITOR  METHOD  end//
+
+    
+    public function outstandingpayout()                          //Outstanding Payment option start 
+    {   
+        $forms=restaurants::orderBy('id', 'desc')->get();
+
+        return view('admin.outstandingpayout',compact('forms'));//Outstanding Payment option end 
+
+    }                                   
+    public function view($restaurant_id)                        // previous Payment option start 
+    { 
+        $forms= Payouts::select('*')->where('restaurant_id',$restaurant_id)->paginate(5);
+        return view('admin.previouspayment',compact("forms"));  // previous Payment option end
+
+    } 
+    public function hk($id)
+    {    
+        $forms =restaurants::where('id',$id)->first(); 
+        return view('admin.releasepayment',compact("forms"));
+    }
+
+    public function form(Request $request)                      // This is a payment add method start
+    {
+        $obj=new Payouts; 
+        $obj->restaurant_id=$request->restaurant_id;
+        $obj->amount=$request->amount;
+        $obj->method=$request->method;
+        $obj->remark=$request->remark; 
+        $is_saved=$obj->save(); 
+        restaurants::where('restaurant', $request->regno)
+        ->increment('subfee', $request->fee);
+        if($is_saved)
+        {  
+            session()->flash("Message","Fee Add successfully! "); 
+            return redirect("outstandingpayout");
+             
+        }                                                     // This is a payment add method end
+    } 
+
+    public function alluser()                                 // This is a all user show method
+    {
+        $forms=profiles::select('*')->get();
+        return view('admin.viewalluser',compact("forms"));  // This is a all user show method end
+    }
+
+     public function updateprofile(Request $request)
+    {    
+        $this->validate($request, [
+            'image' => 'required|max:2048',
+        ]);
+
+        
+        $file = $request->file('image');
+        $filename = 'image'.time().'.'.$request->image->extension();
+        $destination = storage_path('../public/upload');
+        $file->move($destination,$filename);  
+
+        restaurants::where('id', $request->id)->update([
+         'name'=>$request->name,
+         'address'=>$request->address,
+         'email' =>$request->email,
+         'mobileno' => $request->mobileno, 
+         'image'=>$filename,//where image is a database name
+         'offer'=>$request->offer,  
+         'delivery_time'=>$request->delivery_time,   
+         'working_days'=>$request->working_days,  
+         'cost_for_two'=> $request->cost_for_two,  
+         'bank_name'=> $request->bank_name,  
+         'bank_account_holder'=> $request->bank_account_holder,
+         'bank_account_no'=> $request->bank_account_no,  
+         'ifsc_code'=> $request->ifsc_code
+
+        ]); 
+         return back()->with('success', 'Your Page Content Updated');
+    } 
+    
+   
+
+    public function editprofile($id)
+    {    
+        $data['profile'] = restaurants::where('id',$id)->first(); 
+         
+        return view('admin.editrestaurant', $data); 
+
+    }
+}
+
+
+
+@extends('master') 
+@section('title','Edit Our Profile')
+@section('main_body')
+<br><br>
+ <div class="container">
+  @if($errors->any())
+  <div class="alert alert-danger">
+    <ul>
+      @foreach($errors->all() as $error)
+      <li>{{$error}}</li>
+      @endforeach
+    </ul>
+  </div>
+  @endif
+
+  @if(session()->has("Message"))
+  <div class="alert alert-warning">
+    <p>  {{session()->get("Message")}} </p>
+  </div>
+  @endif
+
+<section class="content">
+  <div class="row"> 
+      <div class="col-md-7"> <br>
+        <div class="box box-primary">
+          <div class="box-header with-border">
+            <h3 class="box-title"><b>Update Our Profile</b></h3>
+          </div><!-- /.box-header -->
+          <!-- form start -->
+          <form action="{{url('updateprofile')}}"  method="post" enctype="multipart/form-data">
+            {{csrf_field()}}
+            <input type="hidden" name="id" value="{{$profile->id}}">
+            <div class="box-body"> 
+              <div class="form-group">
+                <label>Restaurant Name</label>
+                <input type="text" class="form-control"  placeholder="Enter name" name="name" value="{{ $profile->name}}">
+              </div>
+              <div class="form-group">
+                <label>Restaurant Address</label>
+                <input type="text" class="form-control"  placeholder="Enter Address" name="address" value="{{ $profile->address}}">
+              </div>
+              <div class="form-group">
+                <label>Restaurant Email</label>
+                <input type="email" class="form-control"  placeholder="Enter Email" name="email"  value="{{ $profile->email}}">
+              </div>
+              <div class="form-group">
+                <label>Restaurant Contact no.</label>
+                <input type="number" class="form-control"  placeholder="Enter Contact number" name="mobileno" value="{{ $profile->mobileno}}">
+              </div>
+              <div class="form-group">
+                <label>What Do Your Serve ?</label><br>
+                <input type="checkbox" name="servetype[]" value="veg" 
+               >Veg &nbsp;&nbsp;&nbsp;&nbsp; 
+
+                <input type="checkbox" name="servetype[]" value="nonveg"
+                  >Non- Veg 
+              </div>
+              <div class="form-group">
+                <label>What type of menu you offer ?</label><br>
+                <input type="checkbox" name="menutype[]" value="chinese">Chinese &nbsp;&nbsp;&nbsp;&nbsp; 
+                <input type="checkbox" name="menutype[]" value="continental">Continental &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="menutype[]" value="fastfood">Fast-Food &nbsp;&nbsp;&nbsp;&nbsp; 
+                <input type="checkbox" name="menutype[]" value="mughlai">Mughlai &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="menutype[]" value="italian">Italian &nbsp;&nbsp;&nbsp;&nbsp; 
+                <input type="checkbox" name="menutype[]" value="punjabian">Punjabian&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="menutype[]" value="southindian">South-Indian &nbsp;&nbsp; 
+                <input type="checkbox" name="menutype[]" value="mexican">Mexican &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="menutype[]" value="american">American &nbsp;&nbsp;&nbsp;&nbsp; <!-- <input type="checkbox">Non- Veg 
+                <input type="checkbox">Veg &nbsp;&nbsp;&nbsp;&nbsp; <input type="checkbox">Non- Veg  -->
+              </div>
+              <div class="form-group">
+                <label>Restaurant Image</label>
+                <input type="file" name="image" required  value="{{ asset('upload/'.$profile->image) }}">
+               <!--  <p class="help-block">Example block-level help text here.</p> -->
+              </div> 
+              <div class="form-group">
+                <label style="float:left;">Offer Discount</label>&nbsp; <p class="help-block"  style="float:right; color:red;"><b>*discount in percent</b>.</p>
+                <input type="text" class="form-control"  placeholder="Enter discount offer" name="offer" value="{{ $profile->offer}}">
+                <!-- <p class="help-block">*discount in percent.</p> -->
+              </div>
+              <div class="form-group">
+                <label style="float:left;">Delivery Time</label>&nbsp; <p class="help-block"  style="float:right; color:red;"><b>*delivery time in minutes</b>.</p>
+             
+                <input type="number" class="form-control"  placeholder="Enter delivery time" name="delivery_time" value="{{ $profile->delivery_time}}">
+                <!-- <p class="help-block">*delvery time in minutes.</p> -->
+              </div>
+              <div class="row">
+                <div class="col-md-6"> 
+                  <div class="form-group">
+                      <label>Opening Time</label><br>
+                    <!-- <input type="time" class="form-control" name="open_time"> -->
+                    <select name="open_hr">
+                      <option>hours</option>
+                      <option value="01">01</option>
+                      <option value="02">02</option>
+                      <option value="03">03</option>
+                      <option value="04">04</option>
+                      <option value="05">05</option>
+                      <option value="06">06</option>
+                      <option value="07">07</option>
+                      <option value="08">08</option>
+                      <option value="09">09</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option> 
+                    </select>&nbsp;&nbsp;&nbsp;
+                    <select name="open_min">
+                      <option>Min</option>
+                      <option value="00">00</option>
+                      <option value="30">30</option> 
+                    </select>&nbsp;&nbsp;
+                    <select name="open_meridian">
+                      <option value="am">AM</option>
+                      <option value="pm" >PM</option> 
+                    </select>
+                    <!-- <p class="help-block">*delvery time in minutes.</p> -->
+                  </div>
+                </div>
+                <div class="col-md-6"> 
+                  <div class="form-group">
+                      <label>Closing Time</label><br>
+                    <!-- <input type="time" class="form-control" name="close_time"> -->
+                    <select name="close_hr">
+                      <option>hours</option>
+                      <option value="01">01</option>
+                      <option value="02">02</option>
+                      <option value="03">03</option>
+                      <option value="04">04</option>
+                      <option value="05">05</option>
+                      <option value="06">06</option>
+                      <option value="07">07</option>
+                      <option value="08">08</option>
+                      <option value="09">09</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option> 
+                    </select>&nbsp;&nbsp;&nbsp;
+                    <select name="close_min">
+                      <option>Min</option>
+                      <option value="00">00</option>
+                      <option value="30">30</option> 
+                    </select>&nbsp;&nbsp;
+                    <select name="close_meridian">
+                      <option value="am">AM</option>
+                      <option value="pm" >PM</option> 
+                    </select>
+                    <!-- <p class="help-block">*delvery time in minutes.</p> -->
+                  </div>
+                </div> 
+              </div>
+              <div class="form-group">
+                <label>Working Days</label><br>
+                <input type="checkbox" name="working_days[]" value="monday">Monday &nbsp;&nbsp;&nbsp;&nbsp; 
+                <input type="checkbox" name="working_days[]" value="tuesday">Tuesday &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="working_days[]" value="wednesday">Wednesday &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="working_days[]" value="thursday">Thursday &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="working_days[]" value="friday">Friday&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="working_days[]" value="saturday">Saturday &nbsp;&nbsp;
+                <input type="checkbox" name="working_days[]" value="sunday">Sunday &nbsp;&nbsp;&nbsp;&nbsp; 
+              </div> 
+              <div class="form-group">
+                <label>Cost Of Two</label>
+                <input type="number" class="form-control"  placeholder="Enter cost of two" name="cost_for_two" value="{{ $profile-> cost_for_two}}">
+              </div>
+              <div class="form-group">
+                <label>Bank Name</label>
+                <input type="text" class="form-control"  placeholder="Enter bank name" name="bank_name" value="{{ $profile->bank_name}}">
+              </div>
+              <div class="form-group">
+                <label>Bank Account Holder</label>
+                <input type="text" class="form-control"  placeholder="Enter bank account holder" name="bank_account_holder" value="{{ $profile->bank_account_holder}}">
+              </div> 
+              <div class="form-group">
+                <label>Bank Account No.</label>
+                <input type="number" class="form-control"  placeholder="Enter account number" name="bank_account_no" value="{{ $profile->bank_account_no}}">
+              </div> 
+              <div class="form-group">
+                <label>Ifsc Code</label>
+                <input type="text" class="form-control"  placeholder="Enter ifsc code" name="ifsc_code" value="{{ $profile->ifsc_code}}">
+              </div>
+              </div> 
+              <div class="box-footer">
+              <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+             
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+@endsection
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@extends('master') 
+@section('main_body')
+<br><br>
+ <div class="container">
+  @if($errors->any())
+  <div class="alert alert-danger">
+    <ul>
+      @foreach($errors->all() as $error)
+      <li>{{$error}}</li>
+      @endforeach
+    </ul>
+  </div>
+  @endif
+
+  @if(session()->has("Message"))
+  <div class="alert alert-warning">
+    <p>  {{session()->get("Message")}} </p>
+  </div>
+  @endif
+
+<section class="content">
+  <div class="row"> 
+    <div class="col-md-3"></div>
+      <div class="col-md-7"> <br>
+        <div class="box box-primary">
+          <div class="box-header with-border">
+            <h3 class="box-title"><b>Update Restaurant Profile</b></h3>
+          </div><!-- /.box-header -->
+          <!-- form start -->
+          <form action="{{url('updaterestaurant')}}"  method="post" enctype="multipart/form-data">
+            {{csrf_field()}} 
+            <div class="box-body"> 
+              <div class="form-group">
+                <label>Restaurant Name</label>
+                <input type="text" class="form-control"  placeholder="Enter name" name="name" value="{{ $profile->name}}">
+              </div>
+              <div class="form-group">
+                <label>Restaurant Address</label>
+                <input type="text" class="form-control"  placeholder="Enter Address" name="address" value="{{ $profile->address}}">
+              </div>
+              <div class="form-group">
+                <label>Restaurant Email</label>
+                <input type="email" class="form-control"  placeholder="Enter Email" name="email"  value="{{ $profile->email}}">
+              </div>
+              <div class="form-group">
+                <label>Restaurant Contact no.</label>
+                <input type="number" class="form-control"  placeholder="Enter Contact number" name="mobileno" value="{{ $profile->mobileno}}">
+              </div>
+              <div class="form-group">
+                <label>What Do Your Serve ?</label><br>
+                <input type="checkbox" name="servetype[]" value="veg" 
+                @if($profile->servetype=='veg' || $profile->servetype=='nonveg') checked  / @endif>Veg &nbsp;&nbsp;&nbsp;&nbsp; 
+
+                <input type="checkbox" name="servetype[]" value="nonveg"
+                   @if($profile->servetype=='veg'|| $profile->servetype=='nonveg') checked  / @endif>Non- Veg 
+              </div>
+              <!-- <div class="form-group">
+                <label>What type of menu you offer ?</label><br>
+                <input type="checkbox" name="menutype[]" value="chinese"  @if($profile->menutype=='chinese') checked  / @endif>Chinese &nbsp;&nbsp;&nbsp;&nbsp; 
+                <input type="checkbox" name="menutype[]" value="continental">Continental &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="menutype[]" value="fastfood">Fast-Food &nbsp;&nbsp;&nbsp;&nbsp; 
+                <input type="checkbox" name="menutype[]" value="mughlai">Mughlai &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="menutype[]" value="italian">Italian &nbsp;&nbsp;&nbsp;&nbsp; 
+                <input type="checkbox" name="menutype[]" value="punjabian">Punjabian&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="menutype[]" value="southindian">South-Indian &nbsp;&nbsp; 
+                <input type="checkbox" name="menutype[]" value="mexican">Mexican &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="menutype[]" value="american">American &nbsp;&nbsp;&nbsp;&nbsp;  --><!-- <input type="checkbox">Non- Veg 
+                <input type="checkbox">Veg &nbsp;&nbsp;&nbsp;&nbsp; <input type="checkbox">Non- Veg  -->
+              <!-- </div> -->
+              <div class="form-group">
+                <label>Restaurant Image</label>
+                <input type="file" name="image" required  value="{{ asset('upload/'.$profile->image) }}">
+               <!--  <p class="help-block">Example block-level help text here.</p> -->
+              </div> 
+              <div class="form-group">
+                <label style="float:left;">Offer Discount</label>&nbsp; <p class="help-block"  style="float:right; color:red;"><b>*discount in percent</b>.</p>
+                <input type="text" class="form-control"  placeholder="Enter discount offer" name="offer" value="{{ $profile->offer}}">
+                <!-- <p class="help-block">*discount in percent.</p> -->
+              </div>
+              <div class="form-group">
+                <label style="float:left;">Delivery Time</label>&nbsp; <p class="help-block"  style="float:right; color:red;"><b>*delivery time in minutes</b>.</p>
+             
+                <input type="number" class="form-control"  placeholder="Enter delivery time" name="delivery_time" value="{{ $profile->delivery_time}}">
+                <!-- <p class="help-block">*delvery time in minutes.</p> -->
+              </div>
+              <div class="row">
+                <div class="col-md-6"> 
+                  <div class="form-group">
+                      <label>Opening Time</label><br>
+                    <!-- <input type="time" class="form-control" name="open_time"> -->
+                    <select name="open_hr">
+                      <option>hours</option>
+                      <option value="01">01</option>
+                      <option value="02">02</option>
+                      <option value="03">03</option>
+                      <option value="04">04</option>
+                      <option value="05">05</option>
+                      <option value="06">06</option>
+                      <option value="07">07</option>
+                      <option value="08">08</option>
+                      <option value="09">09</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option> 
+                    </select>&nbsp;&nbsp;&nbsp;
+                    <select name="open_min">
+                      <option>Min</option>
+                      <option value="00">00</option>
+                      <option value="30">30</option> 
+                    </select>&nbsp;&nbsp;
+                    <select name="open_meridian">
+                      <option value="am">AM</option>
+                      <option value="pm" >PM</option> 
+                    </select>
+                    <!-- <p class="help-block">*delvery time in minutes.</p> -->
+                  </div>
+                </div>
+                <div class="col-md-6"> 
+                  <div class="form-group">
+                      <label>Closing Time</label><br>
+                    <!-- <input type="time" class="form-control" name="close_time"> -->
+                    <select name="close_hr">
+                      <option>hours</option>
+                      <option value="01">01</option>
+                      <option value="02">02</option>
+                      <option value="03">03</option>
+                      <option value="04">04</option>
+                      <option value="05">05</option>
+                      <option value="06">06</option>
+                      <option value="07">07</option>
+                      <option value="08">08</option>
+                      <option value="09">09</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option> 
+                    </select>&nbsp;&nbsp;&nbsp;
+                    <select name="close_min">
+                      <option>Min</option>
+                      <option value="00">00</option>
+                      <option value="30">30</option> 
+                    </select>&nbsp;&nbsp;
+                    <select name="close_meridian">
+                      <option value="am">AM</option>
+                      <option value="pm" >PM</option> 
+                    </select>
+                    <!-- <p class="help-block">*delvery time in minutes.</p> -->
+                  </div>
+                </div> 
+              </div>
+              <div class="form-group">
+                <label>Working Days</label><br>
+                <input type="checkbox" name="working_days[]" value="monday"  @if($profile->working_days=='monday') checked  / @endif>Monday &nbsp;&nbsp;&nbsp;&nbsp; 
+                <input type="checkbox" name="working_days[]" value="tuesday" @if($profile->working_days=='tuesday') checked  / @endif>Tuesday &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="working_days[]" value="wednesday" @if($profile->working_days=='wednesday') checked  / @endif>Wednesday &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="working_days[]" value="thursday" @if($profile->working_days=='thursday') checked  / @endif>Thursday &nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="working_days[]" value="friday" @if($profile->working_days=='friday') checked  / @endif>Friday&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" name="working_days[]" value="saturday" @if($profile->working_days=='monday') checked  / @endif>Saturday &nbsp;&nbsp;
+                <input type="checkbox" name="working_days[]" value="sunday" @if($profile->working_days=='monday') checked  / @endif>Sunday &nbsp;&nbsp;&nbsp;&nbsp; 
+              </div> 
+              <div class="form-group">
+                <label>Cost Of Two</label>
+                <input type="number" class="form-control"  placeholder="Enter cost of two" name="cost_for_two" value="{{ $profile-> cost_for_two}}">
+              </div>
+              <div class="form-group">
+                <label>Bank Name</label>
+                <input type="text" class="form-control"  placeholder="Enter bank name" name="bank_name" value="{{ $profile->bank_name}}">
+              </div>
+              <div class="form-group">
+                <label>Bank Account Holder</label>
+                <input type="text" class="form-control"  placeholder="Enter bank account holder" name="bank_account_holder" value="{{ $profile->bank_account_holder}}">
+              </div> 
+              <div class="form-group">
+                <label>Bank Account No.</label>
+                <input type="number" class="form-control"  placeholder="Enter account number" name="bank_account_no" value="{{ $profile->bank_account_no}}">
+              </div> 
+              <div class="form-group">
+                <label>Ifsc Code</label>
+                <input type="text" class="form-control"  placeholder="Enter ifsc code" name="ifsc_code" value="{{ $profile->ifsc_code}}">
+              </div>
+              </div> 
+              <div class="box-footer">
+              <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+             
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+@endsection
+
+
+
+
+

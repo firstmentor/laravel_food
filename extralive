@@ -1,0 +1,445 @@
+<?php
+
+namespace App\Http\Controllers; 
+use Illuminate\Http\Request;  
+use App\Http\Controllers\Controller; 
+use Illuminate\Support\Facades\Redirect; 
+use App\restaurant; 
+use App\order; 
+use App\order_item;
+use Validator; 
+use Session;
+use\DB; 
+use Auth;
+use\App\User;
+
+class HomePageController extends Controller
+{    
+    public function dashboard()
+    {
+        if(Auth::user()->usertype == 4)  // it is an admin
+        {  
+             return redirect('selectform');
+        }
+
+        elseif(Auth::user()->usertype == 1) // it is an restaurant
+        {  
+            if(Auth::user()->is_active == 1)
+            {
+              return view('restaurant.index'); 
+            } 
+
+            if(Auth::user()->is_active == 3)
+            {
+              return view('restaurant.approval'); 
+            } 
+        }
+
+        elseif(Auth::user()->usertype == 0) // it is an delivery boy
+        {  
+            if(Auth::user()->is_active == 1)
+            {
+               return view('restaurant.index'); 
+            } 
+        }
+
+        elseif(Auth::user()->usertype == 2) // it is an delivery boy
+        {  
+            if(Auth::user()->is_active == 1)
+            {
+               return view('restaurant.index'); 
+            } 
+        }
+    }
+
+    public function selectform()
+    {
+        return view('restaurant.selectform');
+    } 
+
+    public function approvalpage()
+    {
+        return view('restaurant.approval');
+    }
+
+    public function update(Request $req)
+    {
+        User::where('id',Auth::User()->id)->update([
+          'usertype' =>$req->type
+        ]); 
+       return redirect('restaurant'); 
+    }
+
+    public function showneworder()
+    { 
+       $forms=order::where('restaurant_id', Auth::user()->id)->orderBy("id","desc")->get();
+       return view('restaurant.neworder',compact("forms"));
+    }
+
+    public function showallorder()
+    {
+        $forms=order_item::where('restaurant_id', Auth::user()->id)->orderBy("id","desc")->get();
+        return view('restaurant.allorder',compact("forms"));
+    }
+
+    public function buttonupdate(Request $req)
+    {
+        order::where('id',$req->id)->update
+        ([
+         'order_status'=>$req->order_status
+        ]);
+        return back()->with('success',"status Update successfully");
+    }
+
+
+   
+}
+
+
+
+
+
+
+
+
+
+
+
+@if(Auth::user()->usertype == 0 && Auth::user()->is_active == 1)
+    <aside class="main-sidebar"><!-- sidebar: style can be found in sidebar.less -->
+        <section class="sidebar">
+            <br>
+            <ul class="sidebar-menu"> 
+                <CENTER> 
+                    <p style="color:white;"><b><span>Welcome &nbsp;{{ Auth::user()->name }} </span></b></p> 
+                 </CENTER>
+                <li>
+                    <a href="{{url('dashboard')}}">
+                      <i class="fa fa-dashboard"></i><span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{url('alluser')}}"><i class="fa fa-search"></i><span>View All Users</span></a>
+                </li>
+                <li class="treeview">
+                    <a href="#">
+                      <i class="fa fa-pie-chart"></i>
+                      <span> Manage Restaurants</span>
+                      <i class="fa fa-angle-left pull-right"></i>
+                    </a>
+                    <ul class="treeview-menu"> 
+                        <li>
+                            <a href="{{url('admin')}}"><i class="fa fa-circle-o"></i><span>Add Restaurants</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{url('allrestaurant')}}"><i class="fa fa-circle-o"></i><span>View All Restaurants</span>
+                           </a>
+                        </li>
+                        <li>
+                            <a href="{{url('approval')}}"><i class="fa fa-circle-o"></i><span>View For Approval</span>
+                           </a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="{{url('editor')}}"><i class="fa fa-pie-chart"></i><span>Manage Content</span></a>
+                </li>
+                <li class="treeview">
+                    <a href="#">
+                      <i class="fa fa-pie-chart"></i>
+                       <span>Settlements</span>
+                      <i class="fa fa-angle-left pull-right"></i>
+                    </a>
+
+                    <ul class="treeview-menu"> 
+                      <li>
+                        <a href="{{url('outstandingpayout')}}"><i class="fa fa-circle-o"></i><span>Outstanding Payout</span>
+                        </a>
+                      </li> 
+                    </ul>
+                </li>
+            </ul>
+        </section><!-- /.sidebar -->
+    </aside>
+ 
+@elseif(Auth::user()->usertype == 1 && Auth::user()->is_active == 1) 
+    <aside class="main-sidebar">
+        <section class="sidebar"><br>
+            <ul class="sidebar-menu"> 
+                <CENTER> 
+                  <p style="color:white;"><b><span>Welcome &nbsp;{{ Auth::user()->name }} </span></b></p> 
+                 </CENTER>
+                <li>
+                <li>
+                    <a href="{{url('dashboard')}}">
+                      <i class="fa fa-dashboard"></i> <span>Dashboard</span>
+                    </a>
+                </li> 
+                <li class="treeview">
+                    <a href="#">
+                      <i class="fa fa-pie-chart"></i>
+                       <span> Manage Cuisine/Dishes</span>
+                      <i class="fa fa-angle-left pull-right"></i>
+                    </a>
+
+                    <ul class="treeview-menu"> 
+                      <li>
+                        <a href="{{url('addcategory')}}"><i class="fa fa-circle-o"></i><span>Manage Menu Category</span>
+                        </a>
+                      </li>
+                      <li>
+                        <a href="{{url('addcuisine')}}"><i class="fa fa-circle-o"></i><span>Add Item</span>
+                        </a>
+                      </li>
+
+                      <li>
+                        <a href="{{url('allmenu')}}"><i class="fa fa-circle-o"></i><span>All Item</span>
+                        </a>
+                      </li> 
+                    </ul>
+                </li>
+                <li class="treeview">
+                    <a href="#">
+                      <i class="fa fa-pie-chart"></i>
+                       <span> Manage Orders</span>
+                      <i class="fa fa-angle-left pull-right"></i>
+                    </a>
+
+                    <ul class="treeview-menu"> 
+                      <li>
+                        <a href="{{url('neworder')}}"><i class="fa fa-circle-o"></i><span>All New Orders</span>
+                        </a>
+                      </li>
+
+                      <li>
+                        <a href="{{url('allorder')}}"><i class="fa fa-circle-o"></i><span>All Order</span>
+                        </a>
+                      </li> 
+                    </ul>
+                </li>
+                <li class="treeview">
+                    <a href="#">
+                      <i class="fa fa-pie-chart"></i>
+                       <span>Settlements</span>
+                      <i class="fa fa-angle-left pull-right"></i>
+                    </a>
+
+                    <ul class="treeview-menu"> 
+                      <li>
+                        <a href="{{url('outprofile')}}"><i class="fa fa-circle-o"></i><span>Outstanding balance</span>
+                        </a>
+                      </li> 
+
+                      <li>
+                        <a href="{{url('payment/show')}}"><i class="fa fa-circle-o"></i><span>Previous Payout</span>
+                        </a>
+                      </li> 
+                    </ul>
+                </li>
+                <li>
+                    <a href="{{url('setting')}}"><i class="fa fa-pie-chart"></i><span>Setting</span>
+                    </a>
+                </li> 
+                <li>
+                    <a href="{{url('profile')}}"><i class="fa fa-pie-chart"></i><span>Profiles<span>
+                    </a>
+                </li>  
+            </ul>
+        </section>
+    </aside>
+@elseif(Auth::user()->usertype == 1 && Auth::user()->is_active == 3) 
+    <aside class="main-sidebar">
+        <section class="sidebar"><br>
+            <ul class="sidebar-menu"> 
+                <CENTER> 
+                  <p style="color:white;"><b><span>Welcome &nbsp;{{ Auth::user()->name }} </span></b></p> 
+                 </CENTER>
+                <li>
+                <li>
+                    <a href="{{url('dashboard')}}">
+                      <i class="fa fa-dashboard"></i> <span>Dashboard</span>
+                    </a>
+                </li> 
+                <li class="treeview">
+                    <a href="#">
+                      <i class="fa fa-pie-chart"></i>
+                       <span> Manage Cuisine/Dishes</span>
+                      <i class="fa fa-angle-left pull-right"></i>
+                    </a>
+
+                    <ul class="treeview-menu"> 
+                      <li>
+                        <a href="{{url('addcategory')}}"><i class="fa fa-circle-o"></i><span>Manage Menu Category</span>
+                        </a>
+                      </li>
+                      <li>
+                        <a href="{{url('addcuisine')}}"><i class="fa fa-circle-o"></i><span>Add Item</span>
+                        </a>
+                      </li>
+
+                      <li>
+                        <a href="{{url('allmenu')}}"><i class="fa fa-circle-o"></i><span>All Item</span>
+                        </a>
+                      </li> 
+                    </ul>
+                </li>
+                <!-- <li class="treeview">
+                    <a href="#">
+                      <i class="fa fa-pie-chart"></i>
+                       <span> Manage Orders</span>
+                      <i class="fa fa-angle-left pull-right"></i>
+                    </a>
+
+                    <ul class="treeview-menu"> 
+                      <li>
+                        <a href="{{url('neworder')}}"><i class="fa fa-circle-o"></i><span>All New Orders</span>
+                        </a>
+                      </li>
+
+                      <li>
+                        <a href="{{url('allorder')}}"><i class="fa fa-circle-o"></i><span>All Order</span>
+                        </a>
+                      </li> 
+                    </ul>
+                </li> -->
+                <!-- <li class="treeview">
+                    <a href="#">
+                      <i class="fa fa-pie-chart"></i>
+                       <span>Settlements</span>
+                      <i class="fa fa-angle-left pull-right"></i>
+                    </a>
+
+                    <ul class="treeview-menu"> 
+                      <li>
+                        <a href="{{url('outprofile')}}"><i class="fa fa-circle-o"></i><span>Outstanding balance</span>
+                        </a>
+                      </li> 
+
+                      <li>
+                        <a href="{{url('payment/show')}}"><i class="fa fa-circle-o"></i><span>Previous Payout</span>
+                        </a>
+                      </li> 
+                    </ul>
+                </li> -->
+                <li>
+                    <a href="{{url('setting')}}"><i class="fa fa-pie-chart"></i><span>Setting</span>
+                    </a>
+                </li> 
+                <li>
+                    <a href="{{url('profile')}}"><i class="fa fa-pie-chart"></i><span>Profiles<span>
+                    </a>
+                </li>  
+            </ul>
+        </section>
+    </aside>
+@elseif(Auth::user()->usertype == 2 && Auth::user()->is_active == 1) 
+     <h3>Please ! Download an app for login </h3>
+@elseif(Auth::user()->usertype == 3 && Auth::user()->is_active == 1) 
+ 
+@elseif(Auth::user()->usertype == 4 && Auth::user()->is_active == 2) 
+
+ 
+@endif 
+ 
+ <?php
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
+|
+*/
+
+Route::get('/', function () {
+    return redirect('dashboard');
+})->middleware('auth');                                                          // Login page 
+
+Route::group(['middleware' => ['auth']], function()                 // It is a group middleware start
+{             
+    Route::get('dashboard','HomePageController@dashboard');    // it is a dashboard or card route    
+    Route::get('selectform','HomePageController@selectform');    // it is a select form route
+    Route::post('update','HomePageController@update');
+    Route::resource('restaurant','RestaurantController');     // it is a restaurant profile form
+    Route::resource('menu','MenuController');                  // it is a menu form route
+    Route::resource('setting','RestaurantController1');       // it is a setting form 
+
+    Route::get('addcategory','MenuController@addcategoryform');
+    Route::post('addcategoryvalue','MenuController@addcuisinecategory');
+
+
+    Route::get('allmenu','MenuController@show');             // it is a show/all menu view route
+    Route::get('neworder','HomePageController@showneworder'); // it is a show neworder list  route
+    Route::post('order1','HomePageController@buttonupdate');  // it is a menu form route
+    Route::get('allorder','HomePageController@showallorder');        // it is a menu form route
+    Route::get('changestatus/{id}/{status}','MenuController@change_status');// it is a menu form route
+    Route::resource('admin','AdminController');     // it is a restaurant profile form
+    Route::get('allrestaurant','AdminController@show');  // it is a show/all menu view route
+    Route::get('alluser','AdminController@alluser');  // it is a show/all menu view route
+    Route::get('editor','AdminController@editor');             // it is a show/all menu view route
+    Route::post('details_update/{id}','AdminController@details_update'); // it is a show/all menu view route
+    Route::get('/forms/{id}','AdminController@edit');
+    Route::post('/update_restaurant/{id}','AdminController@update');
+    Route::get('outstandingpayout','AdminController@outstandingpayout');
+    Route::get('view/{id}','AdminController@view');
+    Route::get('viewpay/{id}','RestaurantController@view');
+
+    Route::get('/restaurant_delete/{id}','AdminController@restaurantdelete');
+    
+
+    Route::get('/profile','RestaurantController@profile');
+    Route::get('/outprofile','PaymentController@profile');
+
+    Route::get('/editprofile/{id}','RestaurantController@editprofile');
+    Route::post('updateprofile','RestaurantController@updateprofile');
+
+    Route::get('/editrestaurant/{id}','AdminController@editprofile');
+    Route::post('updaterestaurant','AdminController@updateprofile');
+    Route::get('approvenow','AdminController@approvenow');
+
+
+    Route::get('editcuisine/{id}','RestaurantController@editcuisine');
+
+    
+    Route::post('updatecuisine','RestaurantController@updatecuisine');
+    Route::post('updatesetting','RestaurantController1@updatesettingform'); 
+    Route::get('addpay/{id}','PaymentController@hk'); // data view part//
+    Route::post('form','AdminController@form'); // data view part//
+    Route::resource('payment','PaymentController');
+
+
+    //Delivery Boy
+    Route::resource('deliveryboy','DeliveryController');     // it is a restaurant profile form
+    Route::get('addcuisine','MenuController@showcategories'); 
+    Route::get('approval','AdminController@approval'); 
+    Route::get('approval/{id}','AdminController@approvenow'); 
+
+
+    
+    
+}); 
+
+Auth::routes(); 
+Route::get('/home', 'HomeController@index')->name('home');  // Auth route
+
+route::get('privacy','AdminController@privacy');           //Privacy route
+route::get('term','AdminController@term');                // Term route
+route::get('contact','AdminController@contact');         // Contact route
+
+Route::group(['middleware' => ['auth']], function()     // It is a group middleware start
+{             
+     
+    
+});
+
+
+
+
+//test
+Route::get('test', function() {
+   DB::table('users')->where('id', 7)->update(['password' => bcrypt('admin@agfoods123')]); 
+});
